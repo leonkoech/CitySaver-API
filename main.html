@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP32 Multi-Sensor Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 3em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .controls {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            margin: 0 10px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 15px 50px rgba(0,0,0,0.15);
+        }
+
+        .stat-card h3 {
+            color: #4a5568;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .stat-value {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .stat-unit {
+            color: #718096;
+            font-size: 0.9em;
+            font-weight: 500;
+        }
+
+        .stat-time {
+            color: #a0aec0;
+            font-size: 0.8em;
+            margin-top: 10px;
+            font-style: italic;
+        }
+
+        .data-table {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .table-header {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 20px;
+            font-size: 1.3em;
+            font-weight: 600;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+        }
+
+        th {
+            background: linear-gradient(45deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+            color: #4a5568;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-size: 0.85em;
+        }
+
+        tr:hover {
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .status-good {
+            color: #38a169;
+            font-weight: 600;
+        }
+
+        .status-bad {
+            color: #e53e3e;
+            font-weight: 600;
+        }
+
+        .loading {
+            text-align: center;
+            color: #718096;
+            font-style: italic;
+        }
+
+        .icon {
+            font-size: 1.3em;
+        }
+
+        /* Status indicators */
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-live {
+            background: #38a169;
+            box-shadow: 0 0 10px rgba(56, 161, 105, 0.5);
+        }
+
+        .status-cached {
+            background: #d69e2e;
+            box-shadow: 0 0 10px rgba(214, 158, 46, 0.5);
+        }
+
+        .status-error {
+            background: #e53e3e;
+            box-shadow: 0 0 10px rgba(229, 62, 62, 0.5);
+        }
+
+        /* Auto refresh indicator */
+        .auto-refresh {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 10px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .refresh-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: #38a169;
+            border-radius: 50%;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .btn {
+                display: block;
+                margin: 10px auto;
+                width: 200px;
+            }
+            
+            table {
+                font-size: 0.85em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="auto-refresh">
+        <span class="refresh-dot"></span>
+        Auto-refresh: <span id="refreshStatus">ON</span>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h1>🛰️ ESP32 Multi-Sensor Dashboard</h1>
+            <p>Real-time monitoring powered by FastAPI</p>
+        </div>
+
+        <div class="controls">
+            <button class="btn" onclick="refreshData()">🔄 Refresh Data</button>
+            <button class="btn" onclick="toggleAutoRefresh()">⏸️ Toggle Auto</button>
+            <a href="/docs" target="_blank" class="btn">📚 API Docs</a>
+            <a href="/data/file" target="_blank" class="btn">💾 Download JSON</a>
+            <button class="btn" onclick="clearData()" style="background: linear-gradient(45deg, #e53e3e, #c53030);">🗑️ Clear Data</button>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3><span class="icon">📊</span> Total Records</h3>
+                <div class="stat-value" id="totalRecords">--</div>
+                <div class="stat-unit">data points</div>
+                <div class="stat-time" id="lastUpdate">No data</div>
+            </div>
+
+            <div class="stat-card">
+                <h3><span class="icon">📏</span> Distance</h3>
+                <div class="stat-value" id="latestDistance">--</div>
+                <div class="stat-unit">centimeters</div>
+                <div class="stat-time" id="distanceTime">No data</div>
+            </div>
+
+            <div class="stat-card">
+                <h3><span class="icon">🌡️</span> Temperature</h3>
+                <div class="stat-value" id="latestTemp">--</div>
+                <div class="stat-unit">°Celsius</div>
+                <div class="stat-time" id="tempTime">No data</div>
+            </div>
+
+            <div class="stat-card">
+                <h3><span class="icon">💧</span> Humidity</h3>
+                <div class="stat-value" id="latestHumidity">--</div>
+                <div class="stat-unit">percent</div>
+                <div class="stat-time" id="humidityTime">No data</div>
+            </div>
+
+            <div class="stat-card">
+                <h3><span class="icon">🌍</span> GPS Status</h3>
+                <div class="stat-value" id="gpsStatus">--</div>
+                <div class="stat-unit">coordinates</div>
+                <div class="stat-time" id="gpsTime">No data</div>
+            </div>
+
+            <div class="stat-card">
+                <h3><span class="icon">⚡</span> System Status</h3>
+                <div class="stat-value" id="systemStatus">--</div>
+                <div class="stat-unit">operational</div>
+                <div class="stat-time" id="systemTime">No data</div>
+            </div>
+        </div>
+
+        <div class="data-table">
+            <div class="table-header">
+                📋 Recent Sensor Readings
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>📅 Timestamp</th>
+                        <th>📏 Distance (cm)</th>
+                        <th>🌡️ Temp (°C)</th>
+                        <th>💧 Humidity (%)</th>
+                        <th>🌍 GPS Coordinates</th>
+                        <th>📡 Status</th>
+                    </tr>
+                </thead>
+                <tbody id="dataTable">
+                    <tr>
+                        <td colspan="6" class="loading">
+                            <span class="refresh-dot"></span>
+                            Loading sensor data...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        let autoRefresh = true;
+        let refreshInterval;
+
+        async function refreshData() {
+            try {
+                console.log('Fetching data...');
+                const response = await fetch('/data');
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                updateDisplay(result.data);
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                document.getElementById('dataTable').innerHTML = `
+                    <tr>
+                        <td colspan="6" style="color: #e53e3e; text-align: center;">
+                            ❌ Error loading data: ${error.message}
+                        </td>
+                    </tr>`;
+            }
+        }
+
+        function updateDisplay(data) {
+            // Update total records
+            document.getElementById('totalRecords').textContent = data.length;
+            document.getElementById('lastUpdate').textContent = `Updated: ${new Date().toLocaleTimeString()}`;
+
+            if (data.length > 0) {
+                const latest = data[data.length - 1];
+                const timestamp = new Date(latest.received_at);
+
+                // Update stats cards
+                document.getElementById('latestDistance').textContent = latest.distance_cm.toFixed(1);
+                document.getElementById('distanceTime').textContent = timestamp.toLocaleTimeString();
+
+                document.getElementById('latestTemp').textContent = latest.temperature_c.toFixed(1);
+                document.getElementById('tempTime').textContent = timestamp.toLocaleTimeString();
+
+                document.getElementById('latestHumidity').textContent = latest.humidity_percent.toFixed(1);
+                document.getElementById('humidityTime').textContent = timestamp.toLocaleTimeString();
+
+                // GPS Status
+                if (latest.gps_valid) {
+                    document.getElementById('gpsStatus').textContent = '✅ Active';
+                    document.getElementById('gpsStatus').className = 'stat-value status-good';
+                } else {
+                    document.getElementById('gpsStatus').textContent = '❌ No Fix';
+                    document.getElementById('gpsStatus').className = 'stat-value status-bad';
+                }
+                document.getElementById('gpsTime').textContent = timestamp.toLocaleTimeString();
+
+                // System Status
+                document.getElementById('systemStatus').textContent = '🟢 Online';
+                document.getElementById('systemStatus').className = 'stat-value status-good';
+                document.getElementById('systemTime').textContent = timestamp.toLocaleTimeString();
+            }
+
+            // Update data table (show last 30 records)
+            const tableBody = document.getElementById('dataTable');
+            if (data.length === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="loading">No data available</td>
+                    </tr>`;
+            } else {
+                tableBody.innerHTML = data.slice(-30).reverse().map(item => {
+                    const time = new Date(item.received_at);
+                    return `
+                        <tr>
+                            <td>${time.toLocaleString()}</td>
+                            <td>${item.distance_cm.toFixed(1)}</td>
+                            <td>
+                                <span class="status-indicator ${item.temperature_c > -100 ? 'status-live' : 'status-error'}"></span>
+                                ${item.temperature_c.toFixed(1)}
+                            </td>
+                            <td>
+                                <span class="status-indicator ${item.humidity_percent > -100 ? 'status-live' : 'status-error'}"></span>
+                                ${item.humidity_percent.toFixed(1)}%
+                            </td>
+                            <td>${item.gps_valid ? 
+                                `${item.latitude.toFixed(5)}, ${item.longitude.toFixed(5)}` : 
+                                '<span class="status-bad">No GPS fix</span>'}</td>
+                            <td class="${item.gps_valid ? 'status-good' : 'status-bad'}">
+                                ${item.gps_valid ? '✅ GPS OK' : '❌ No GPS'}
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+        }
+
+        function toggleAutoRefresh() {
+            autoRefresh = !autoRefresh;
+            document.getElementById('refreshStatus').textContent = autoRefresh ? 'ON' : 'OFF';
+            
+            if (autoRefresh) {
+                startAutoRefresh();
+            } else {
+                stopAutoRefresh();
+            }
+        }
+
+        function startAutoRefresh() {
+            refreshInterval = setInterval(refreshData, 3000); // Every 3 seconds
+        }
+
+        function stopAutoRefresh() {
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+            }
+        }
+
+        async function clearData() {
+            if (confirm('⚠️ This will permanently delete all sensor data. Are you sure?')) {
+                try {
+                    const response = await fetch('/data', { method: 'DELETE' });
+                    
+                    if (response.ok) {
+                        alert('✅ Data cleared successfully');
+                        refreshData();
+                    } else {
+                        throw new Error('Failed to clear data');
+                    }
+                } catch (error) {
+                    alert('❌ Error clearing data: ' + error.message);
+                }
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            refreshData();
+            if (autoRefresh) {
+                startAutoRefresh();
+            }
+        });
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', function() {
+            stopAutoRefresh();
+        });
+    </script>
+</body>
+</html>
