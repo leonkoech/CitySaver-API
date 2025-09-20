@@ -661,13 +661,12 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
     )
 
 # Add this endpoint to your FastAPI application
-
 @app.get("/extra-points",
          tags=["Mock Data"],
          summary="Get extra points mock data",
-         description="Retrieve mock data from extra_points.json file for testing and development purposes")
+         description="Retrieve mock flood sensor data from extra_points.json file formatted for map display")
 async def get_extra_points():
-    """Return the contents of extra_points.json as a JSON object"""
+    """Return mock sensor data in the same format as /data/latest endpoint"""
     try:
         extra_points_file = "extra_points.json"
         
@@ -682,10 +681,44 @@ async def get_extra_points():
         
         logger.info("📋 Extra points mock data requested")
         
+        # Transform the data to match the expected format from /data/latest
+        # Assuming your extra_points.json contains an array of sensor points
+        devices = {}
+        
+        if isinstance(extra_points_data, list):
+            # If it's an array of points
+            for i, point in enumerate(extra_points_data):
+                device_id = f"mock_sensor_{i+1}"
+                devices[device_id] = {
+                    "device_id": device_id,
+                    "latitude": point.get("lat", 0),
+                    "longitude": point.get("lng", 0),
+                    "distance_cm": point.get("distance_cm", 50),  # Default safe distance
+                    "temperature_c": point.get("temperature_c", 25),
+                    "humidity_percent": point.get("humidity_percent", 60),
+                    "gps_valid": True,
+                    "received_at": datetime.now().isoformat()
+                }
+        elif isinstance(extra_points_data, dict) and "devices" in extra_points_data:
+            # If it already has the right structure
+            devices = extra_points_data["devices"]
+        else:
+            # If it's a single object, treat as one device
+            devices["mock_sensor_1"] = {
+                "device_id": "mock_sensor_1",
+                "latitude": extra_points_data.get("lat", 0),
+                "longitude": extra_points_data.get("lng", 0), 
+                "distance_cm": extra_points_data.get("distance_cm", 50),
+                "temperature_c": extra_points_data.get("temperature_c", 25),
+                "humidity_percent": extra_points_data.get("humidity_percent", 60),
+                "gps_valid": True,
+                "received_at": datetime.now().isoformat()
+            }
+        
         return {
-            "status": "success",
-            "source_file": "extra_points.json",
-            "data": extra_points_data
+            "query_type": "latest_per_device",
+            "total_devices": len(devices),
+            "devices": devices
         }
         
     except json.JSONDecodeError as e:
