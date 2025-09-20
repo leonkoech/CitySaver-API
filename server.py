@@ -660,6 +660,48 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
         ).model_dump()
     )
 
+# Add this endpoint to your FastAPI application
+
+@app.get("/extra-points",
+         tags=["Mock Data"],
+         summary="Get extra points mock data",
+         description="Retrieve mock data from extra_points.json file for testing and development purposes")
+async def get_extra_points():
+    """Return the contents of extra_points.json as a JSON object"""
+    try:
+        extra_points_file = "extra_points.json"
+        
+        if not os.path.exists(extra_points_file):
+            raise HTTPException(
+                status_code=404, 
+                detail="extra_points.json file not found"
+            )
+        
+        with open(extra_points_file, 'r', encoding='utf-8') as f:
+            extra_points_data = json.load(f)
+        
+        logger.info("📋 Extra points mock data requested")
+        
+        return {
+            "status": "success",
+            "source_file": "extra_points.json",
+            "data": extra_points_data
+        }
+        
+    except json.JSONDecodeError as e:
+        logger.error(f"❌ Invalid JSON in extra_points.json: {e}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid JSON format in extra_points.json: {str(e)}"
+        )
+    except Exception as e:
+        logger.error(f"❌ Error reading extra_points.json: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to read extra points data"
+        )
+
+
 if __name__ == "__main__":
     import os
     
