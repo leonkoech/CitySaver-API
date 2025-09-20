@@ -24,7 +24,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-DEV_URL = "https://d12b95bc50a9.ngrok-free.app"
+DEV_URL = "https://city-saver.azurewebsites.net"
 PROD_URL = "http://192.168.104.34:8000"
 
 # Initialize FastAPI with comprehensive configuration
