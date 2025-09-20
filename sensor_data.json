@@ -2,7 +2,6 @@
   {
     "device_id": "esp32_sensor_01",
     "timestamp": 20936,
-    "distance_safe": true,
     "distance_cm": 15.96,
     "distance_inch": 6.28,
     "temperature_c": 20.0,

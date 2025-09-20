@@ -62,10 +62,17 @@ jobs:
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_A08B0F885BB24EFD9A1334EA3EC77072 }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_49279286B825415BA34B10E566C98B8A }}
 
+      - name: Create startup script
+        run: |
+          echo '#!/bin/bash' > startup.sh
+          echo 'python -m uvicorn server:app --host 0.0.0.0 --port $PORT' >> startup.sh
+          chmod +x startup.sh
+
       - name: 'Deploy to Azure Web App'
         uses: azure/webapps-deploy@v3
         id: deploy-to-webapp
         with:
           app-name: 'city-saver'
           slot-name: 'Production'
+          startup-command: 'python -m uvicorn server:app --host 0.0.0.0 --port $PORT'
           

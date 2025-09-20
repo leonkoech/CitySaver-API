@@ -29,7 +29,7 @@ PROD_URL = "http://192.168.104.34:8000"
 
 # Initialize FastAPI with comprehensive configuration
 app = FastAPI(
-    title="Flood Guard",
+    title="City Saver",
     description="""
 ## Real-time IoT Sensor Data Collection System
 
@@ -661,16 +661,22 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
     )
 
 if __name__ == "__main__":
+    import os
+    
+    # Azure Web Apps uses the PORT environment variable
+    port = int(os.environ.get("PORT", 8000))
+    host = os.environ.get("HOST", "0.0.0.0")
+    
     print("Starting ESP32 Sensor FastAPI Server with Scalar Documentation...")
-    print(f"Dashboard: {DEV_URL}/dashboard")  
-    print(f"API Docs (Scalar): {DEV_URL}/docs")
-    print(f"Data endpoint: POST {DEV_URL}/data")
-    print(f"File download: GET {DEV_URL}/data/file")
-    print(f"Statistics: GET {DEV_URL}/stats")
+    print(f"Dashboard: http://{host}:{port}/dashboard")  
+    print(f"API Docs (Scalar): http://{host}:{port}/docs")
+    print(f"Data endpoint: POST http://{host}:{port}/data")
+    print(f"File download: GET http://{host}:{port}/data/file")
+    print(f"Statistics: GET http://{host}:{port}/stats")
     
     uvicorn.run(
         app,
-        host="0.0.0.0",
-        port=8000,
+        host=host,
+        port=port,
         log_level="info"
     )
